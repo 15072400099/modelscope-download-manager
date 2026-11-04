@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 使用说明 / 常见问题
+    url: https://github.com/15072400099/modelscope-download-manager#readme
+    about: 先看 README 的「常见问题」和「故障排查」，很多问题那里有答案
+  - name: 下载好了怎么在别的软件里用
+    url: https://github.com/15072400099/modelscope-download-manager#readme
+    about: 在「我的模型」页复制路径，粘到 LM Studio / ComfyUI / Ollama 等

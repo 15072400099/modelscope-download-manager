@@ -81,12 +81,50 @@ python app\repair_missing.py    :: fetch only the missing bytes (HTTP Range resu
 `检查并补齐模型.bat` runs both. They don't depend on the library's resume logic,
 so their behaviour is predictable.
 
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Task stuck at 0%, speed stays 0 | the official library hangs resuming large shards | run `检查并补齐模型.bat` (bypasses the library) |
+| `_DownloadTooSlowError [E1020]` | same as above (rate watchdog) | same |
+| "ModelScope server is down" message | their backend is broken, not your network | retry later; the UI tells you explicitly |
+| Browser can't open `127.0.0.1:8765` | service not started, or port shifted | check the address printed in the console window |
+| Console window flashes and closes | dependencies missing | run `安装环境.bat` and read the error |
+| Files missing after a "finished" download | shard failures | run `检查并补齐模型.bat` |
+| "login required" | gated model | not supported; use ModelScope's official flow |
+
+Logs: `data/logs/server.log`. Please paste the last few dozen lines in issues.
+
+## Security
+
+- Binds **127.0.0.1 only**. Do not change it to `0.0.0.0`: there is no authentication,
+  yet the app exposes a delete-folder endpoint — exposing it to a LAN means handing
+  out delete permissions.
+- Deletion is restricted to paths inside the download directory (prefix checked).
+- No account data is read or uploaded; there is no login, and nothing is written to the registry.
+
+## Building the exe yourself
+
+With Python 3.10+:
+
+```bat
+安装环境.bat
+打包exe.bat
+```
+
+Output: `dist\ModelScopeDownloadManager.exe` (~31 MB). The first build installs PyInstaller.
+
 ## Limitations
 
 - **Windows only** — uses `os.startfile`, `.bat` launchers and Windows path handling
 - **Unofficial** — not affiliated with Alibaba / ModelScope; it uses their public HTTP endpoints, which may change
 - **No login** — gated models requiring authorization are not supported
 - **Models only** (`model`); datasets are not adapted
+
+## Contributing
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) first — it has hard rules, especially **`.bat` files must be GBK encoded**
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ## Authorship
 

@@ -1,0 +1,62 @@
+name: 报告问题
+description: 下载失败、界面报错、卡住不动、文件缺失等
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。填得越具体，定位越快。
+
+        如果是**下载失败**，请先看一下界面上的报错原文；如果是**文件不齐**，
+        先跑一次 `检查并补齐模型.bat`（源码方式）或看 README 的「故障排查」。
+
+  - type: dropdown
+    id: how
+    attributes:
+      label: 你是用哪种方式运行的？
+      options:
+        - 下载的 exe（ModelScopeDownloadManager.exe）
+        - 源码方式（批处理启动）
+        - 直接从 Python 运行
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么？
+      description: 期望的结果 vs 实际的结果
+      placeholder: 点下载后一直显示 0%，过了十分钟也没动……
+    validations:
+      required: true
+
+  - type: textarea
+    id: how-to-reproduce
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 搜索 xxx
+        2. 点「看文件」，只勾选 safetensors
+        3. 点「开始下载」
+        4. 约 5 分钟后进度停住
+
+  - type: input
+    id: model
+    attributes:
+      label: 涉及的模型
+      description: 作者/模型名，例如 Qwen/Qwen2.5-7B-Instruct
+      placeholder: 作者/模型名
+
+  - type: textarea
+    id: log
+    attributes:
+      label: 日志或报错原文
+      description: 界面上的红色报错，或 data\logs\server.log 的最后几十行
+      render: text
+
+  - type: input
+    id: env
+    attributes:
+      label: 系统与版本
+      placeholder: Windows 11 23H2 / v1.0.0

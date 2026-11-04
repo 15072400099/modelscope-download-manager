@@ -1,0 +1,3 @@
+# 仅打包 exe 时需要
+-r requirements.txt
+pyinstaller>=6.0

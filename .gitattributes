@@ -1,0 +1,18 @@
+# .bat 文件是 GBK 编码的，必须原样保留字节，不能做换行/编码转换
+*.bat -text
+*.png binary
+*.ico binary
+
+# PowerShell 脚本保持 CRLF
+*.ps1 text eol=crlf
+
+# 其余按文本处理
+* text=auto
+*.py text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
