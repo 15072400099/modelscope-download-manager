@@ -126,10 +126,14 @@ python app\repair_missing.py    :: 只补缺的差额，已下好的不重下
 - **不支持登录**：需要授权的 gated 模型暂时下不了
 - **只支持模型**（`model`），数据集未适配
 
-## 参与贡献
+## 反馈与建议
 
-- 想改点东西：先看 [CONTRIBUTING.md](CONTRIBUTING.md)，里面有几条硬性约定（尤其 `.bat` 必须是 GBK）
+这个项目由作者个人维护，**不接收代码修改**（Pull Request 不会被合并）。
+
+- 遇到问题、想提建议：开一个 [Issue](../../issues/new/choose)
+- 想自己改着用：MIT 允许你 fork 任意修改，但不会合并回本仓库
 - 版本变更：[CHANGELOG.md](CHANGELOG.md)
+- 自己跑起来改：[CONTRIBUTING.md](CONTRIBUTING.md) 里有环境搭建方式和三个必须知道的坑（尤其 `.bat` 必须是 GBK）
 
 ## 关于作者
 

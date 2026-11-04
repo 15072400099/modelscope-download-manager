@@ -121,10 +121,15 @@ Output: `dist\ModelScopeDownloadManager.exe` (~31 MB). The first build installs 
 - **No login** — gated models requiring authorization are not supported
 - **Models only** (`model`); datasets are not adapted
 
-## Contributing
+## Feedback
 
-- Read [CONTRIBUTING.md](CONTRIBUTING.md) first — it has hard rules, especially **`.bat` files must be GBK encoded**
+This project is maintained by a single author and **does not accept code contributions**
+(pull requests will not be merged).
+
+- Problems or suggestions: open an [Issue](../../issues/new/choose)
+- Want to change it for yourself: MIT lets you fork and modify freely, but changes will not be merged back
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Running it locally to modify: [CONTRIBUTING.md](CONTRIBUTING.md) covers setup and three traps (especially **`.bat` must be GBK encoded**)
 
 ## Authorship
 
