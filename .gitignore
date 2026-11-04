@@ -1,0 +1,24 @@
+# 下载的模型（可能几十上百 GB）
+models/
+
+# 运行时生成的数据
+data/
+python/
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 临时
+*.log
+*.tmp
+*.incomplete

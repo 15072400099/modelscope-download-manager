@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>模搭 · 模型下载管理器</title>
+<link rel="icon" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">模</div>
+      <div class="brand-text">
+        <h1>模型下载管理器</h1>
+        <p>基于 ModelScope · 断点续传 · 暂停随时继续</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="pill" id="pill-running">下载中 0</div>
+      <div class="pill pill-quiet" id="pill-saved">保存到 models</div>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-view="search">找模型</button>
+    <button class="tab" data-view="tasks">下载任务 <span class="badge" id="badge-tasks">0</span></button>
+    <button class="tab" data-view="library">我的模型 <span class="badge" id="badge-library">0</span></button>
+    <button class="tab" data-view="settings">设置</button>
+  </nav>
+
+  <main>
+    <!-- ================= 找模型 ================= -->
+    <section class="view active" id="view-search">
+      <div class="hero">
+        <h2>想下哪个模型？</h2>
+        <p class="muted">输入模型名字搜索，或直接把模型页面链接粘进来。</p>
+        <div class="searchbar">
+          <input id="search-input" type="text" placeholder="例如：Qwen2.5-7B-Instruct，或 https://www.modelscope.cn/models/Qwen/Qwen2.5-7B-Instruct" autocomplete="off" spellcheck="false">
+          <select id="search-sort" title="排序方式">
+            <option value="downloads">下载最多</option>
+            <option value="default">综合排序</option>
+            <option value="likes">点赞最多</option>
+            <option value="last_modified">最近更新</option>
+          </select>
+          <button class="btn primary" id="search-btn">搜索</button>
+        </div>
+        <div class="quick" id="quick-tags">
+          <span class="muted small">热门：</span>
+          <button class="chip" data-q="Qwen">Qwen</button>
+          <button class="chip" data-q="DeepSeek">DeepSeek</button>
+          <button class="chip" data-q="GLM">GLM</button>
+          <button class="chip" data-q="Llama">Llama</button>
+          <button class="chip" data-q="stable-diffusion">绘图</button>
+          <button class="chip" data-q="whisper">语音识别</button>
+        </div>
+      </div>
+
+      <div id="search-hint" class="hint hidden"></div>
+      <div class="section-head hidden" id="result-head">
+        <h2 id="result-title"></h2>
+        <span class="muted small" id="result-sub"></span>
+      </div>
+      <div id="search-results" class="grid"></div>
+      <div class="center">
+        <button class="btn ghost hidden" id="load-more">加载更多</button>
+      </div>
+    </section>
+
+    <!-- ================= 下载任务 ================= -->
+    <section class="view" id="view-tasks">
+      <div class="section-head">
+        <h2>下载任务</h2>
+        <div class="row-gap">
+          <button class="btn ghost small" id="pause-all">全部暂停</button>
+          <button class="btn ghost small" id="resume-all">全部继续</button>
+        </div>
+      </div>
+      <div id="tasks-empty" class="empty">
+        <div class="empty-icon">⤓</div>
+        <h3>还没有下载任务</h3>
+        <p class="muted">去「找模型」里搜一个，点「下载」就会出现在这里。</p>
+        <button class="btn primary" onclick="switchView('search')">去找模型</button>
+      </div>
+      <div id="task-list" class="stack"></div>
+    </section>
+
+    <!-- ================= 我的模型 ================= -->
+    <section class="view" id="view-library">
+      <div class="section-head">
+        <h2>我的模型 <span class="muted small" id="library-total"></span></h2>
+        <div class="row-gap">
+          <button class="btn ghost small" id="library-refresh">刷新</button>
+          <button class="btn ghost small" id="library-open">打开模型文件夹</button>
+        </div>
+      </div>
+      <div id="library-empty" class="empty">
+        <div class="empty-icon">◱</div>
+        <h3>这里还是空的</h3>
+        <p class="muted">下载完成的模型会出现在这里，方便你复制路径给别的软件用。</p>
+      </div>
+      <div id="library-list" class="stack"></div>
+    </section>
+
+    <!-- ================= 设置 ================= -->
+    <section class="view" id="view-settings">
+      <div class="section-head"><h2>设置</h2></div>
+
+      <div class="card settings-card">
+        <div class="field">
+          <label>模型保存位置</label>
+          <div class="row-gap">
+            <input id="set-dir" type="text" spellcheck="false">
+            <button class="btn ghost" id="set-browse">浏览…</button>
+          </div>
+          <p class="muted small">每个模型会存在这个文件夹下的「作者/模型名」里。</p>
+        </div>
+
+        <div class="field">
+          <label>同时下载几个模型 <span class="muted small" id="set-parallel-val">2</span></label>
+          <input id="set-parallel" type="range" min="1" max="6" step="1">
+          <p class="muted small">网速够快可以调大；调太大会互相抢带宽。</p>
+        </div>
+
+        <div class="field">
+          <label>每个模型同时下几个文件 <span class="muted small" id="set-files-val">3</span></label>
+          <input id="set-files" type="range" min="1" max="12" step="1">
+          <p class="muted small">小文件很多的模型，调大一些更快。</p>
+        </div>
+
+        <div class="row-gap">
+          <button class="btn primary" id="set-save">保存设置</button>
+          <span class="muted small" id="set-tip"></span>
+        </div>
+      </div>
+
+      <div class="card settings-card">
+        <h3>运行状态</h3>
+        <ul class="kv" id="status-list">
+          <li><span>程序版本</span><b>1.0</b></li>
+          <li><span>modelScope 库</span><b id="ms-version">—</b></li>
+          <li><span>服务地址</span><b id="status-url">—</b></li>
+        </ul>
+        <div class="row-gap">
+          <button class="btn ghost" id="btn-log">打开日志</button>
+          <button class="btn danger ghost" id="btn-quit">退出程序</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= 下载弹窗 ================= -->
+  <div class="modal hidden" id="modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3 id="modal-title">下载模型</h3>
+          <p class="muted small" id="modal-sub"></p>
+        </div>
+        <button class="icon-btn" id="modal-close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field">
+          <label>版本（分支/标签）</label>
+          <div class="row-gap">
+            <select id="modal-revision"></select>
+            <button class="btn ghost small" id="modal-reload">重新读取文件</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="row-between">
+            <label>要下载哪些文件 <span class="muted small" id="modal-file-count"></span></label>
+            <div class="row-gap">
+              <button class="chip small" data-pick="all">全选</button>
+              <button class="chip small" data-pick="none">全不选</button>
+              <button class="chip small" data-pick="safetensors">只要 safetensors</button>
+              <button class="chip small" data-pick="gguf">只要 gguf</button>
+            </div>
+          </div>
+          <div class="file-list" id="modal-files">
+            <div class="muted small pad">正在读取文件列表…</div>
+          </div>
+        </div>
+
+        <div class="summary" id="modal-summary"></div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn ghost" id="modal-cancel">取消</button>
+        <button class="btn primary" id="modal-start">开始下载</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
