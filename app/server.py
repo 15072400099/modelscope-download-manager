@@ -21,13 +21,22 @@ from urllib.parse import parse_qs, unquote, urlparse
 os.environ.setdefault("TQDM_DISABLE", "1")
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
-BASE = Path(__file__).resolve().parent.parent  # 程序根目录
-APP_DIR = BASE / "app"
+# 打包成 exe 后：程序根目录 = exe 所在目录，静态资源在 PyInstaller 的临时解包目录里
+FROZEN = bool(getattr(sys, "frozen", False))
+if FROZEN:
+    BASE = Path(sys.executable).resolve().parent
+    BUNDLE = Path(getattr(sys, "_MEIPASS", BASE))
+else:
+    BASE = Path(__file__).resolve().parent.parent  # 程序根目录
+    BUNDLE = BASE
+
+APP_DIR = BUNDLE / "app"
 WEB_DIR = APP_DIR / "web"
 DATA_DIR = BASE / "data"
 LOG_DIR = DATA_DIR / "logs"
 
-sys.path.insert(0, str(APP_DIR))
+if not FROZEN:
+    sys.path.insert(0, str(APP_DIR))
 
 import ms_client  # noqa: E402
 from download_manager import DownloadManager  # noqa: E402
@@ -102,7 +111,15 @@ def versions() -> dict:
         out["modelscope"] = pkg_version("modelscope")
         out["modelscope_hub"] = pkg_version("modelscope-hub")
     except Exception:
-        out.setdefault("modelscope", "未知")
+        pass
+    if not out.get("modelscope"):
+        # 打包成 exe 后没有包元数据，退回读模块里的版本号
+        try:
+            import modelscope
+
+            out["modelscope"] = getattr(modelscope, "__version__", "未知")
+        except Exception:
+            out["modelscope"] = "未知"
     return out
 
 
@@ -349,6 +366,13 @@ sys.stdout.write(path or "")
 
 
 def pick_directory(initial: str) -> str:
+    if FROZEN:
+        # 打包成 exe 后没法再调用 python 子进程，直接在进程内开对话框
+        try:
+            return _pick_directory_inprocess(initial)
+        except Exception as exc:  # noqa: BLE001
+            log("选择目录失败: " + repr(exc))
+            return ""
     creation = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
     try:
         proc = subprocess.run(
@@ -359,6 +383,20 @@ def pick_directory(initial: str) -> str:
     except Exception as exc:  # noqa: BLE001
         log("选择目录失败: " + repr(exc))
         return ""
+
+
+def _pick_directory_inprocess(initial: str) -> str:
+    import tkinter as tk
+    from tkinter import filedialog
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    try:
+        path = filedialog.askdirectory(initialdir=initial or ".", title="选择模型保存位置", mustexist=False)
+    finally:
+        root.destroy()
+    return path or ""
 
 
 # ---------------------------------------------------------------------------
