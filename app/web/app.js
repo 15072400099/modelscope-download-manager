@@ -515,6 +515,7 @@ async function loadSettings() {
   app.settings = data.settings;
   const settings = data.settings;
   $("#set-dir").value = settings.download_dir;
+  $("#set-proxy").value = settings.proxy || "";
   $("#set-parallel").value = settings.max_parallel_models;
   $("#set-files").value = settings.files_per_model;
   $("#set-parallel-val").textContent = settings.max_parallel_models;
@@ -532,6 +533,7 @@ function shortenPath(path) {
 async function saveSettings() {
   const payload = {
     download_dir: $("#set-dir").value.trim(),
+    proxy: $("#set-proxy").value.trim(),
     max_parallel_models: Number($("#set-parallel").value),
     files_per_model: Number($("#set-files").value),
   };
@@ -557,7 +559,10 @@ async function pollState() {
   }
   app.settings = data.settings;
   app.tasks = data.tasks || [];
-  if (data.versions) $("#ms-version").textContent = data.versions.modelscope || "—";
+  if (data.versions) {
+    $("#net-component").textContent = data.versions.curl_version || "—";
+    $("#status-proxy").textContent = data.versions.proxy || "未设置";
+  }
   renderTasks(app.tasks);
 
   const active = app.tasks.filter((t) => ["running", "queued", "pausing"].includes(t.status)).length;

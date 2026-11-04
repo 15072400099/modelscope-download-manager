@@ -117,6 +117,11 @@
         </div>
 
         <div class="field">
+          <label>代理（可选）</label>
+          <input id="set-proxy" type="text" spellcheck="false" placeholder="例如 127.0.0.1:7897，留空则不用代理">
+          <p class="muted small">公司网络或需要走代理时填写，搜索和下载都会通过它。</p>
+        </div>
+        <div class="field">
           <label>同时下载几个模型 <span class="muted small" id="set-parallel-val">2</span></label>
           <input id="set-parallel" type="range" min="1" max="6" step="1">
           <p class="muted small">网速够快可以调大；调太大会互相抢带宽。</p>
@@ -138,8 +143,9 @@
         <h3>运行状态</h3>
         <ul class="kv" id="status-list">
           <li><span>程序版本</span><b>1.0</b></li>
-          <li><span>modelScope 库</span><b id="ms-version">—</b></li>
-          <li><span>服务地址</span><b id="status-url">—</b></li>
+          <li><span>网络组件</span><b id="net-component">—</b></li>
+          <li><span>当前代理</span><b id="status-proxy">—</b></li>
+          <li><span>本机界面地址</span><b id="status-url">—</b></li>
         </ul>
         <div class="row-gap">
           <button class="btn ghost" id="btn-log">打开日志</button>

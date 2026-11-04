@@ -39,6 +39,7 @@ if not FROZEN:
     sys.path.insert(0, str(APP_DIR))
 
 import ms_client  # noqa: E402
+import transport  # noqa: E402
 from download_manager import DownloadManager  # noqa: E402
 
 DEFAULT_SETTINGS = {
@@ -47,6 +48,7 @@ DEFAULT_SETTINGS = {
     "files_per_model": 3,
     "port": 8765,
     "revision_default": "master",
+    "proxy": "",
 }
 
 CONTENT_TYPES = {
@@ -100,26 +102,21 @@ def log(message: str) -> None:
 
 
 SETTINGS = load_settings()
+ms_client.configure(SETTINGS)
 MANAGER = DownloadManager(DATA_DIR, SETTINGS)
 
 
 def versions() -> dict:
     out = {"python": "%d.%d.%d" % sys.version_info[:3]}
+    out["curl"] = transport.curl_path()
     try:
-        from importlib.metadata import version as pkg_version
-
-        out["modelscope"] = pkg_version("modelscope")
-        out["modelscope_hub"] = pkg_version("modelscope-hub")
+        proc = subprocess.run([transport.curl_path(), "--version"],
+                              capture_output=True, text=True, timeout=10)
+        out["curl_version"] = (proc.stdout or "").splitlines()[0].strip()
     except Exception:
-        pass
-    if not out.get("modelscope"):
-        # 打包成 exe 后没有包元数据，退回读模块里的版本号
-        try:
-            import modelscope
-
-            out["modelscope"] = getattr(modelscope, "__version__", "未知")
-        except Exception:
-            out["modelscope"] = "未知"
+        out["curl_version"] = "未知"
+    out["endpoint"] = ms_client.ENDPOINT
+    out["proxy"] = SETTINGS.get("proxy") or "未设置"
     return out
 
 
@@ -277,9 +274,12 @@ class Handler(BaseHTTPRequestHandler):
                     SETTINGS["max_parallel_models"] = max(1, min(6, int(patch["max_parallel_models"])))
                 if "files_per_model" in patch:
                     SETTINGS["files_per_model"] = max(1, min(16, int(patch["files_per_model"])))
+                if "proxy" in patch:
+                    SETTINGS["proxy"] = str(patch["proxy"]).strip()
                 if "revision_default" in patch:
                     SETTINGS["revision_default"] = str(patch["revision_default"]) or "master"
                 save_settings(SETTINGS)
+                ms_client.configure(SETTINGS)
                 MANAGER.settings = SETTINGS
                 MANAGER._library_cache = None
                 self._json({"ok": True, "settings": SETTINGS})

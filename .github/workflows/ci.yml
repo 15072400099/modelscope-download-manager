@@ -9,7 +9,7 @@ jobs:
   smoke:
     name: 语法检查 + 启动冒烟
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
 
     steps:
       - uses: actions/checkout@v7
@@ -17,24 +17,36 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-          cache: pip
-
-      - name: 安装依赖
-        run: python -m pip install -r requirements.txt
 
       - name: Python 语法检查
         run: python -m compileall -q app
+
+      - name: 零依赖检查（不应 import 第三方库）
+        shell: pwsh
+        run: |
+          $hits = Select-String -Path app/*.py -Pattern '^\s*(import|from)\s+(requests|modelscope|modelscope_hub)\b'
+          if ($hits) {
+            $hits | ForEach-Object { Write-Host "$($_.Filename):$($_.LineNumber): $($_.Line.Trim())" }
+            throw "检测到第三方依赖，本项目应保持零依赖"
+          }
+          Write-Host "零依赖检查通过"
+
+      - name: curl 可用性检查
+        shell: pwsh
+        run: |
+          $ver = & curl.exe --version
+          Write-Host "$($ver[0])"
+          if ($LASTEXITCODE -ne 0) { throw "系统没有可用的 curl.exe" }
 
       - name: 批处理编码检查（必须是 GBK）
         shell: pwsh
         run: |
           $bad = @()
+          $strict = [System.Text.Encoding]::GetEncoding('utf-8', [System.Text.EncoderFallback]::ExceptionFallback, [System.Text.DecoderFallback]::ExceptionFallback)
           Get-ChildItem *.bat | ForEach-Object {
             $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
-            # 尝试按 UTF-8 严格解码，能成功说明大概率被存成了 UTF-8
             try {
-              $utf8 = [System.Text.Encoding]::GetEncoding('utf-8', [System.Text.EncoderFallback]::ExceptionFallback, [System.Text.DecoderFallback]::ExceptionFallback)
-              $null = $utf8.GetString($bytes)
+              $null = $strict.GetString($bytes)
               $hasChinese = [System.Text.Encoding]::GetEncoding(936).GetString($bytes) -match '[\u4e00-\u9fff]'
               if ($hasChinese) { $bad += $_.Name }
             } catch { }
@@ -49,7 +61,6 @@ jobs:
         run: |
           $env:TQDM_DISABLE = "1"
           $proc = Start-Process -FilePath python -ArgumentList "app/server.py" -PassThru -NoNewWindow
-
           $ready = $false
           foreach ($i in 1..40) {
             Start-Sleep -Milliseconds 750
@@ -61,11 +72,10 @@ jobs:
           if (-not $ready) { throw "服务在 30 秒内没有启动" }
 
           $state = Invoke-RestMethod "http://127.0.0.1:8765/api/state" -TimeoutSec 10
-          Write-Host "state ok: tasks=$($state.tasks.Count) dir=$($state.settings.download_dir)"
+          Write-Host "state ok: tasks=$($state.tasks.Count) curl=$($state.versions.curl_version)"
 
           $page = Invoke-WebRequest "http://127.0.0.1:8765/" -UseBasicParsing -TimeoutSec 10
           if ($page.StatusCode -ne 200 -or $page.Content.Length -lt 500) { throw "首页没有正常返回" }
-          Write-Host "index ok: $($page.Content.Length) bytes"
 
           foreach ($asset in @("/static/style.css", "/static/app.js", "/static/favicon.svg")) {
             $r = Invoke-WebRequest "http://127.0.0.1:8765$asset" -UseBasicParsing -TimeoutSec 10

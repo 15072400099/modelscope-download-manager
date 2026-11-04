@@ -38,7 +38,7 @@ Your browser opens the UI; models are saved next to the exe in `models\`.
 ### Option B — from source (Windows, Python 3.10+)
 
 1. Install Python 3.10+ and **tick "Add Python to PATH"**: <https://www.python.org/downloads/>
-2. Double-click **`安装环境.bat`** — creates a virtualenv and installs dependencies
+2. Double-click **`启动下载管理器.bat`** — no `pip install` needed at all
 3. Double-click **`启动下载管理器.bat`** — browser opens <http://127.0.0.1:8765>
 
 > The console window *is* the server. Closing it stops the service.
@@ -63,6 +63,18 @@ data/logs/server.log          log
 ```
 
 Each finished model folder contains `.download-meta.json` (repo id, revision, file count, size).
+
+## Zero dependencies
+
+The official `modelscope` library pulls in 60 MB+ (modelscope-hub / cryptography /
+requests / urllib3 / tqdm …) while this app only used 4 endpoints and 1 download call
+from it. Worse, the library's resume path can stall on large shards (E1020).
+
+So the HTTP layer calls the `curl.exe` that ships with Windows (10 1803+), and downloads
+are implemented directly over HTTP Range. Result: no `pip install`, a much smaller exe,
+and pause/resume behaviour we fully control.
+
+Note: the bundled curl 8.4 is built without zlib — `--compressed` is unavailable.
 
 ## Why "check and repair" exists
 

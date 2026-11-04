@@ -1,36 +1,35 @@
 @echo off
 cd /d "%~dp0"
 setlocal
-set "TQDM_DISABLE=1"
-title 安装运行环境
+title 环境自检
+
+echo ============================================
+echo   这个程序不需要安装第三方库，只做一次自检
+echo ============================================
+echo.
+
 where python >nul 2>nul
 if errorlevel 1 (
-  echo.
-  echo   没找到 Python。
-  echo   请先安装 Python 3.10 或更高版本，安装时记得勾选 "Add Python to PATH"。
-  echo   下载地址： https://www.python.org/downloads/
-  echo.
+  echo [X] 找不到 Python。
+  echo     请安装 Python 3.10 或更高版本，安装时勾选 "Add Python to PATH"。
+  echo     下载地址： https://www.python.org/downloads/
   pause
   exit /b 1
 )
-if not exist ".venv\Scripts\python.exe" (
-  echo 正在创建虚拟环境...
-  python -m venv .venv
-  if errorlevel 1 (
-    echo 创建虚拟环境失败。
-    pause
-    exit /b 1
-  )
-)
-echo 正在安装依赖（首次约几分钟）...
-".venv\Scripts\python.exe" -m pip install --upgrade pip
-".venv\Scripts\python.exe" -m pip install -r requirements.txt
+for /f "tokens=2" %%v in ('python -V 2^>^&1') do set "PYVER=%%v"
+echo [OK] Python %PYVER%
+
+where curl >nul 2>nul
 if errorlevel 1 (
-  echo.
-  echo 依赖安装失败，请检查网络后重试。
+  echo [X] 找不到 curl.exe。
+  echo     本程序靠系统自带的 curl 下载，Windows 10 1803 之后应自带。
+  echo     如果没有，从 https://curl.se/windows/ 下载解压到 PATH 里。
   pause
   exit /b 1
 )
+for /f "tokens=2" %%v in ('curl --version 2^>^&1') do set "CURLVER=%%v"
+echo [OK] curl %CURLVER%
+
 echo.
-echo 装好了。双击「启动下载管理器.bat」就能用。
+echo 环境没问题，双击「启动下载管理器.bat」就能用。
 pause

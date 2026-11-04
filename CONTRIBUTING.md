@@ -48,7 +48,8 @@ python app\server.py
 ```
 app/server.py            HTTP 服务与路由（标准库，无框架）
 app/download_manager.py  任务队列、进度、暂停续传、本地模型库
-app/ms_client.py         ModelScope 接口封装与错误翻译
+app/ms_client.py         魔搭接口封装（纯 HTTP）与错误翻译
+app/transport.py         HTTP 传输层（调用系统 curl）
 app/web/                 前端（原生 JS，无构建步骤）
 app/verify_models.py     和远端清单比对，检查文件是否齐全
 app/repair_missing.py    只补缺失的分片（HTTP Range 续传）
@@ -71,3 +72,14 @@ app/repair_missing.py    只补缺失的分片（HTTP Range 续传）
 
 **3. 只监听 `127.0.0.1`。**
 这个程序没有鉴权，却带有删除文件夹的接口。改成 `0.0.0.0` 等于把删文件权限开放给整个局域网。
+
+## 关于依赖
+
+**这个项目是零第三方依赖的**，请保持：只用 Python 标准库 + 系统自带的 `curl.exe`。
+CI 里有一条「零依赖检查」，一旦出现 `import requests` / `import modelscope` 就会红。
+
+传输层在 `app/transport.py`，改动时注意两点：
+
+- Windows 自带的 curl 8.4 不带 zlib，**不能用 `--compressed`**
+- 魔搭的 REST 接口不是公开契约，对方改了要跟着改；改动前先跑一遍
+  `app/verify_models.py` 确认接口还通

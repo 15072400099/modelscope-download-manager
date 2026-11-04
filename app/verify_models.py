@@ -1,36 +1,37 @@
-"""核对本地模型目录与魔搭远端清单是否一致：找出缺失文件和大小不符的文件。
+"""核对本地模型目录和魔搭远端清单是否一致。
 
 用法：python app/verify_models.py
 结果同时写到 data/verify-report.json，供 repair_missing.py 使用。
 """
 
 import json
-import os
+import sys
 from pathlib import Path
 
-os.environ.setdefault("TQDM_DISABLE", "1")
-
-BASE = Path(__file__).resolve().parent.parent  # 程序根目录
+BASE = Path(__file__).resolve().parent.parent
 DATA = BASE / "data"
 REPORT = DATA / "verify-report.json"
 
+sys.path.insert(0, str(BASE / "app"))
 
-def download_root() -> Path:
-    settings = DATA / "settings.json"
-    if settings.exists():
+import ms_client  # noqa: E402
+
+
+def load_settings() -> dict:
+    path = DATA / "settings.json"
+    settings = {"download_dir": str(BASE / "models"), "proxy": ""}
+    if path.exists():
         try:
-            configured = json.loads(settings.read_text(encoding="utf-8")).get("download_dir")
-            if configured:
-                return Path(configured)
+            stored = json.loads(path.read_text(encoding="utf-8"))
+            for key in settings:
+                if key in stored:
+                    settings[key] = stored[key]
         except Exception:
             pass
-    return BASE / "models"
+    return settings
 
 
-ROOT = download_root()
-
-
-def repo_info(model_dir: Path):
+def repo_info(model_dir: Path, root: Path):
     meta_path = model_dir / ".download-meta.json"
     if meta_path.exists():
         try:
@@ -40,7 +41,7 @@ def repo_info(model_dir: Path):
         except Exception:
             pass
     try:
-        parts = model_dir.relative_to(ROOT).parts
+        parts = model_dir.relative_to(root).parts
     except ValueError:
         return None, None
     if len(parts) == 2:
@@ -48,36 +49,32 @@ def repo_info(model_dir: Path):
     return None, None
 
 
-def main():
-    from modelscope.hub.api import HubApi
-
-    api = HubApi()
-    results = []
-    print(f"下载目录：{ROOT}\n")
-    if not ROOT.exists():
+def main() -> int:
+    settings = load_settings()
+    ms_client.configure(settings)
+    root = Path(settings["download_dir"])
+    print(f"下载目录：{root}")
+    print(f"服务地址：{ms_client.ENDPOINT}\n")
+    if not root.exists():
         print("目录不存在，先下载一个模型吧。")
         return 1
 
-    model_dirs = sorted(d for d in ROOT.glob("*/*") if d.is_dir())
-    for model_dir in model_dirs:
-        repo, revision = repo_info(model_dir)
+    results = []
+    for model_dir in sorted(d for d in root.glob("*/*") if d.is_dir()):
+        repo, revision = repo_info(model_dir, root)
         if not repo:
             continue
         entry = {"repo": repo, "revision": revision, "dir": str(model_dir)}
-        try:
-            files = api.list_repo_files(repo, "model", revision=revision, recursive=True)
-        except BaseException as exc:
-            entry["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+        listing = ms_client.list_files(repo, revision)
+        if listing.get("error"):
+            entry["error"] = listing["error"]
             results.append(entry)
-            print(f"[{repo}] 读取远端清单失败：{entry['error'][:80]}")
+            print(f"[跳过] {repo}: {listing['error'][:60]}")
             continue
 
         missing, bad, ok, total = [], [], 0, 0
-        for info in files:
-            path = getattr(info, "path", "")
-            size = int(getattr(info, "size", 0) or 0)
-            if not path or path.endswith("/"):
-                continue
+        for item in listing["files"]:
+            path, size = item["path"], int(item["size"] or 0)
             total += size
             target = model_dir / path
             if not target.exists():
@@ -93,7 +90,7 @@ def main():
             else:
                 ok += 1
 
-        entry.update({"remote_files": len(files), "remote_total": total,
+        entry.update({"remote_files": len(listing["files"]), "remote_total": total,
                       "ok": ok, "missing": missing, "bad": bad})
         results.append(entry)
         flag = "OK" if not missing and not bad else "缺失"

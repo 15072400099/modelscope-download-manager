@@ -1,14 +1,12 @@
 @echo off
-chcp 936 >nul
 cd /d "%~dp0"
 setlocal
 title 打包 exe
 
 if exist "python\python.exe" goto :havepy
 if exist ".venv\Scripts\python.exe" goto :havevenv
-echo 先双击「安装环境.bat」装好环境再来。
-pause
-exit /b 1
+set "PY=python"
+goto :build
 
 :havepy
 set "PY=python\python.exe"
@@ -19,16 +17,16 @@ set "PY=.venv\Scripts\python.exe"
 
 :build
 echo 正在安装打包工具...
-"%PY%" -m pip install -r requirements-dev.txt
+"%PY%" -m pip install --upgrade pyinstaller
 if errorlevel 1 (
-  echo 依赖安装失败。
+  echo 安装 PyInstaller 失败，检查网络后重试。
   pause
   exit /b 1
 )
 
 echo.
 echo 正在打包（几分钟，别关窗口）...
-"%PY%" -m PyInstaller --noconfirm --onefile --console --name ModelScopeDownloadManager --add-data "app/web;app/web" --paths app --hidden-import ms_client --hidden-import download_manager --collect-submodules modelscope --collect-submodules modelscope_hub --exclude-module torch --exclude-module numpy --exclude-module matplotlib --exclude-module PIL app/server.py
+"%PY%" -m PyInstaller --noconfirm --onefile --console --name ModelScopeDownloadManager --add-data "app/web;app/web" --paths app --hidden-import ms_client --hidden-import download_manager --hidden-import transport app/server.py
 
 if errorlevel 1 (
   echo.

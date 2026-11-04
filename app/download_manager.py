@@ -17,13 +17,52 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from modelscope.hub.api import HubApi
-from modelscope_hub import ProgressCallback
-
 import ms_client
+import transport
 
 INCOMPLETE_SUFFIX = ".incomplete"
 META_NAME = ".download-meta.json"
+MAX_ATTEMPTS = 6
+
+
+def download_file_to(url: str, target: Path, expect: int, *, proxy: str | None = None,
+                     event: threading.Event | None = None, on_progress=None,
+                     attempts: int = MAX_ATTEMPTS) -> bool:
+    """把 url 下载到 target：支持断点续传、暂停、失败重试。
+
+    这是整个程序唯一的下载实现，界面任务和「补齐缺失文件」脚本共用它。
+    返回 True 表示文件已完整落地；被暂停时返回 False。
+    """
+    part = Path(str(target) + INCOMPLETE_SUFFIX)
+    part.parent.mkdir(parents=True, exist_ok=True)
+    last_error: BaseException | None = None
+
+    for attempt in range(1, attempts + 1):
+        if event is not None and event.is_set():
+            return False
+        have = part.stat().st_size if part.exists() else 0
+        if expect and have >= expect:
+            break
+        try:
+            result = transport.download_to(url, part, expect, proxy=proxy,
+                                           event=event, on_progress=on_progress)
+            if result == "canceled":
+                return False
+            if result == "restart":
+                continue  # 服务端不支持断点，半截文件已删除，下一轮整份重下
+            last_error = None
+            break
+        except BaseException as exc:  # noqa: BLE001
+            last_error = exc
+            if event is not None and event.is_set():
+                return False
+            time.sleep(min(30, 2 ** attempt))
+
+    size = part.stat().st_size if part.exists() else 0
+    if expect and size < expect:
+        raise last_error or RuntimeError(f"只下到 {size}/{expect} 字节")
+    part.replace(target)
+    return True
 
 STATUS_TEXT = {
     "queued": "排队中",
@@ -216,7 +255,6 @@ class DownloadManager:
     def _run_task(self, task: dict, event: threading.Event) -> None:
         task_id = task["id"]
         try:
-            api = HubApi()
             out_dir = Path(task["local_dir"])
             out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -263,22 +301,12 @@ class DownloadManager:
                 task["files_done"] = sum(1 for f in files if f.get("state") == "done")
             self._mark_dirty()
 
-            # 开跑前先探一下魔搭的下载通道：整站故障时立刻说人话，别让人对着 0% 干等
-            if pending:
-                problem = self._probe_download_channel(api, task, pending[0]["path"])
-                if problem:
-                    with self._lock:
-                        task["status"] = "error"
-                        task["error"] = problem
-                        task["updated_at"] = _now()
-                    self._mark_dirty()
-                    return
 
             failures: list[tuple[str, str]] = []
             workers = max(1, int(self.settings.get("files_per_model", 3)))
 
             def worker(item: dict) -> None:
-                self._download_one(api, task, event, out_dir, item)
+                self._download_one(task, event, out_dir, item)
 
             if pending:
                 with ThreadPoolExecutor(max_workers=min(workers, len(pending))) as pool:
@@ -338,7 +366,7 @@ class DownloadManager:
         finally:
             self._events.pop(task_id, None)
 
-    def _download_one(self, api: HubApi, task: dict, event: threading.Event, out_dir: Path, item: dict) -> None:
+    def _download_one(self, task: dict, event: threading.Event, out_dir: Path, item: dict) -> None:
         path = item["path"]
         size = int(item.get("size") or 0)
         if event.is_set():
@@ -347,53 +375,21 @@ class DownloadManager:
         with self._lock:
             item["state"] = "downloading"
 
-        def make_callback():
-            # 注意：内层类的 self 是回调实例，外层管理器要另取名字，否则会被覆盖
-            manager = self
+        target = out_dir / path
+        url = ms_client.file_url(task["repo_id"], task.get("revision") or "master", path)
 
-            class _CB(ProgressCallback):
-                def __init__(self, filename, file_size):
-                    super().__init__(filename, file_size)
+        def on_progress(delta: int) -> None:
+            with self._lock:
+                total = task.get("bytes_total") or 0
+                value = task.get("bytes_done", 0) + int(delta)
+                task["bytes_done"] = max(0, min(value, total)) if total else max(0, value)
 
-                def update(self, n: int) -> None:
-                    with manager._lock:
-                        total = task.get("bytes_total") or 0
-                        value = task.get("bytes_done", 0) + int(n)
-                        task["bytes_done"] = min(value, total) if total else value
-
-                def end(self) -> None:
-                    pass
-
-            return _CB
-
-        kwargs = dict(
-            repo_id=task["repo_id"],
-            repo_type="model",
-            file_path=path,
-            revision=task.get("revision") or "master",
-            local_dir=out_dir,
-            progress_callbacks=[make_callback()],
-            _cancel_event=event,
-        )
-        try:
-            api.downloader.download_file(file_size=size or None, **kwargs)
-        except Exception as exc:  # noqa: BLE001
-            # 索引里的文件大小偶尔和服务端不一致，这时放宽大小校验重试一次
-            if type(exc).__name__ == "FileSizeMismatchError":
-                api.downloader.download_file(file_size=None, **kwargs)
-            elif ms_client.is_server_outage(exc):
-                # 魔搭服务端整体故障，重试多少次都没用：立刻停下并给出人话
-                with self._lock:
-                    task["status"] = "error"
-                    task["error"] = ms_client.explain_error(exc)
-                    task["updated_at"] = _now()
-                event.set()  # 让同一任务里其他文件的下载一起收手
-                raise
-            else:
-                raise
+        download_file_to(url, target, size, proxy=ms_client.proxy(),
+                         event=event, on_progress=on_progress)
 
         with self._lock:
-            item["state"] = "done"
+            if target.exists():
+                item["state"] = "done"
             task["files_done"] = sum(1 for f in task.get("files", []) if f.get("state") == "done")
 
     # ------------------------------------------------------------------
@@ -524,38 +520,6 @@ class DownloadManager:
     # ------------------------------------------------------------------
     # 辅助
     # ------------------------------------------------------------------
-    def _probe_download_channel(self, api, task: dict, sample_path: str) -> str | None:
-        """开跑前用一次轻量请求探一下魔搭下载通道。
-
-        魔搭整站故障时（例如后台数据库报错），底层库会在内部反复重试，
-        界面上会长时间停在 0%，看着像本地坏了。这里提前十几秒就能判断出来。
-        """
-        import requests
-
-        endpoint = (getattr(api, "endpoint", None) or "https://www.modelscope.cn").rstrip("/")
-        url = f"{endpoint}/api/v1/models/{task['repo_id']}/repo"
-        params = {"Revision": task.get("revision") or "master", "FilePath": sample_path}
-        last_reason = ""
-        for attempt in (1, 2):
-            try:
-                resp = requests.get(
-                    url, params=params, stream=True, timeout=(5, 12),
-                    headers={"User-Agent": "modelscope-studio/1.0"},
-                )
-                code = resp.status_code
-                resp.close()
-                if code >= 500:
-                    last_reason = f"返回 {code}"
-                else:
-                    return None  # 2xx/3xx/4xx 都说明通道是通的，交给正常流程
-            except requests.Timeout:
-                last_reason = "长时间无响应"
-            except Exception:  # noqa: BLE001 - 连不上也可能是本地网络，不拦截
-                return None
-            if attempt == 1:
-                time.sleep(2)
-        return f"魔搭服务器当前故障（{last_reason}），不是你电脑或网络的问题，过一段时间再试"
-
     def _write_meta(self, task: dict, out_dir: Path) -> None:
         try:
             meta = {

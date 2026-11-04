@@ -1,2 +1,0 @@
-modelscope>=1.40,<2
-requests>=2.28
