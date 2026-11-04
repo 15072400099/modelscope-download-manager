@@ -1,5 +1,7 @@
 # 模搭 · 模型下载管理器
 
+[![CI](https://github.com/15072400099/modelscope-download-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/15072400099/modelscope-download-manager/actions/workflows/ci.yml)
+
 给不写代码的人用的 **ModelScope（魔搭）模型下载器**：双击即用，不用敲任何命令。
 
 搜模型 → 点下载 → 看进度 → 断了能续。针对官方命令行「不会用」和「大模型下载容易卡死」这两个痛点做的。
