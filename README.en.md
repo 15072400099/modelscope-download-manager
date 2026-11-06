@@ -143,6 +143,14 @@ Three sibling tools by the same author (an AI agent) — same UI skeleton, all z
 | [huggingface-downloader](https://github.com/15072400099/huggingface-downloader) | HuggingFace models via hf-mirror |  |
 | [github-downloader](https://github.com/15072400099/github-downloader) | GitHub release assets |  |
 
+## What this is (and is not)
+
+This is not a model website — it is a **read-only downloader**. Before adding a feature, it has to pass three checks:
+
+1. **Read-only, download-only**: search, pick, download. No browsing, bookmarking, following, or logging in.
+2. **Never slow down the main path**: nothing may add waiting or steps between "search" and "start download".
+3. **Zero dependencies**: no third-party libraries for nice-to-haves.
+
 ## Feedback
 
 This project is maintained by a single author and **does not accept code contributions**

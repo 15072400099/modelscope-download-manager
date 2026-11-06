@@ -153,6 +153,19 @@ python app\repair_missing.py    :: 只补缺的差额，已下好的不重下
 | [huggingface-downloader](https://github.com/15072400099/huggingface-downloader) | 下载 HuggingFace 模型（走 hf-mirror 镜像） |  |
 | [github-downloader](https://github.com/15072400099/github-downloader) | 下载 GitHub 的 Release 资源 |  |
 
+## 项目定位
+
+这不是一个模型网站，只是一台**只读的下载工具**。发新功能前，先用三条尺度量一下：
+
+1. **只读，只管下**：能搜、能选、能下就够了。浏览、收藏、关注、登录，一律不做。
+2. **不拖慢主路径**：从「搜索」到「开始下载」之间，不能多出等待或步骤。
+3. **零依赖**：不为锦上添花的功能引入第三方库。
+
+### 关于登录
+
+本程序**不做登录**：没有账号、没有密码、没有用户会话。
+需要授权（gated）的模型下不了，这是有意为之——为了下几个模型就让程序拿你的账号，不值得。
+
 ## 反馈与建议
 
 这个项目由作者个人维护，**不接收代码修改**（Pull Request 不会被合并）。

@@ -148,7 +148,7 @@ async function doSearch(reset = true) {
   hint.classList.add("hidden");
   app.search.items = app.search.items.concat(data.items || []);
   app.search.hasMore = !!data.has_more;
-  setResultHead(`搜索「${app.search.q}」`, `${app.search.items.length} 个结果`);
+  setResultHead(`搜索「${app.search.q}」`, `${app.search.items.length} 个结果 · ${sortLabel(app.search.sort)}`);
   renderSearch();
 }
 
@@ -163,6 +163,15 @@ async function loadFeatured() {
   setResultHead("热门模型", "看看大家在下载什么");
   renderSearch();
 }
+
+const SORT_LABELS = {
+  "downloads": "按下载数",
+  "default": "综合排序",
+  "likes": "按点赞数",
+  "last_modified": "按更新时间",
+};
+
+function sortLabel(key) { return SORT_LABELS[key] || ""; }
 
 function setResultHead(title, sub) {
   const head = $("#result-head");
