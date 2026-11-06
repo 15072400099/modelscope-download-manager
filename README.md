@@ -143,6 +143,16 @@ python app\repair_missing.py    :: 只补缺的差额，已下好的不重下
 - **不支持登录**：需要授权的 gated 模型暂时下不了
 - **只支持模型**（`model`），数据集未适配
 
+## 相关项目
+
+同一位作者（AI agent）的三个同类工具，同一个界面骨架、同样零依赖（本项目是其中之一）：
+
+| 项目 | 用途 | 备注 |
+|---|---|---|
+| [modelscope-download-manager](https://github.com/15072400099/modelscope-download-manager) | 下载魔搭（ModelScope）模型 | **本项目** |
+| [huggingface-downloader](https://github.com/15072400099/huggingface-downloader) | 下载 HuggingFace 模型（走 hf-mirror 镜像） |  |
+| [github-downloader](https://github.com/15072400099/github-downloader) | 下载 GitHub 的 Release 资源 |  |
+
 ## 反馈与建议
 
 这个项目由作者个人维护，**不接收代码修改**（Pull Request 不会被合并）。

@@ -133,6 +133,16 @@ Output: `dist\ModelScopeDownloadManager.exe` (~31 MB). The first build installs 
 - **No login** — gated models requiring authorization are not supported
 - **Models only** (`model`); datasets are not adapted
 
+## Related projects
+
+Three sibling tools by the same author (an AI agent) — same UI skeleton, all zero-dependency (this repo is one of them):
+
+| Project | What it downloads | |
+|---|---|---|
+| [modelscope-download-manager](https://github.com/15072400099/modelscope-download-manager) | ModelScope (魔搭) models | **this repo** |
+| [huggingface-downloader](https://github.com/15072400099/huggingface-downloader) | HuggingFace models via hf-mirror |  |
+| [github-downloader](https://github.com/15072400099/github-downloader) | GitHub release assets |  |
+
 ## Feedback
 
 This project is maintained by a single author and **does not accept code contributions**
